@@ -69,6 +69,9 @@ pub fn build(b: *std.Build) void {
     const xml_dep = b.dependency("xml", .{ .target = target, .optimize = optimize });
     const xml_mod = xml_dep.module("xml");
 
+    const xml_host_dep = b.dependency("xml", .{ .target = b.graph.host, .optimize = optimize });
+    const xml_host_mod = xml_host_dep.module("xml");
+
     const root_module = b.addModule("wayland", .{
         .root_source_file = b.path("src/wayland.zig"),
         .target = target,
@@ -94,7 +97,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
-    host_gen_exe.root_module.addImport("xml", xml_mod);
+    host_gen_exe.root_module.addImport("xml", xml_host_mod);
     b.installArtifact(host_gen_exe);
 
     const test_step = b.step("test", "Run tests");
