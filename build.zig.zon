@@ -13,5 +13,14 @@
             .hash = "N-V-__8AAHioGABnssAnKMhn9JEkNUXymmrtMYo-qsWg_lYt",
         },
     },
-    .paths = .{ "build.zig.zon", "build.zig", "src", "generator", "test", "example", "tools", "protocol" },
+    .paths = .{
+        "build.zig.zon",
+        "build.zig",
+        "src",
+        "generator",
+        "test",
+        "example",
+        "tools",
+        "protocol",
+    },
 }
