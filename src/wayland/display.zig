@@ -236,8 +236,15 @@ pub const Display = struct {
 
     /// Bind a listening socket at $XDG_RUNTIME_DIR/<name> with a <name>.lock
     /// lockfile, add it to the event loop. Mirrors wl_display_add_socket.
-    pub fn addSocket(self: *Display, name: []const u8) DisplayError!void {
-        const rt = std.posix.getenv("XDG_RUNTIME_DIR") orelse return error.XdgRuntimeDirNotSet;
+    ///
+    /// The caller supplies the process environment map: 0.16 has no
+    /// std.posix.getenv, and this library reads no globals.
+    pub fn addSocket(
+        self: *Display,
+        environ_map: *const std.process.Environ.Map,
+        name: []const u8,
+    ) DisplayError!void {
+        const rt = environ_map.get("XDG_RUNTIME_DIR") orelse return error.XdgRuntimeDirNotSet;
         return self.addSocketInDir(rt, name);
     }
 
@@ -272,8 +279,12 @@ pub const Display = struct {
     /// Try wayland-0 .. wayland-31, binding the first free one. Returns the name
     /// chosen (a slice into `out_name`, which the caller owns). Mirrors
     /// wl_display_add_socket_auto.
-    pub fn addSocketAuto(self: *Display, out_name: *[16]u8) DisplayError![]const u8 {
-        const rt = std.posix.getenv("XDG_RUNTIME_DIR") orelse return error.XdgRuntimeDirNotSet;
+    pub fn addSocketAuto(
+        self: *Display,
+        environ_map: *const std.process.Environ.Map,
+        out_name: *[16]u8,
+    ) DisplayError![]const u8 {
+        const rt = environ_map.get("XDG_RUNTIME_DIR") orelse return error.XdgRuntimeDirNotSet;
         return self.addSocketAutoInDir(rt, out_name);
     }
 

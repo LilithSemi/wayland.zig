@@ -121,9 +121,10 @@ pub const Connection = struct {
         const fd = self.stream.socket.handle;
         var off: usize = 0;
         while (off < buf.len) {
-            // std.posix.write was removed in 0.16; use the raw syscall layer
-            // (same layer shm.zig uses for sendmsg) with errno handling.
-            const rc = std.posix.system.write(fd, buf.ptr + off, buf.len - off);
+            // std.posix.write was removed in 0.16. Call std.os.linux, not
+            // std.posix.system: that alias becomes std.c when the consumer links
+            // libc, and std.c returns isize with a separate errno.
+            const rc = std.os.linux.write(fd, buf.ptr + off, buf.len - off);
             switch (std.os.linux.errno(rc)) {
                 .SUCCESS => off += @intCast(rc),
                 .INTR => {},
@@ -143,7 +144,7 @@ pub const Connection = struct {
     /// reads leave any extra bytes in the kernel socket buffer for the next
     /// call, so nothing is lost.
     pub fn recvBytes(self: *Connection, out: []u8) !usize {
-        const system = std.posix.system;
+        const linux = std.os.linux;
         const fd = self.stream.socket.handle;
         var total: usize = 0;
         while (total < out.len) {
@@ -151,7 +152,7 @@ pub const Connection = struct {
             // compositor attaches to a message (read() silently drops them).
             var iov = std.posix.iovec{ .base = out.ptr + total, .len = out.len - total };
             var cmsg_buf: [256]u8 align(8) = undefined;
-            var msg = std.posix.msghdr{
+            var msg = linux.msghdr{
                 .name = null,
                 .namelen = 0,
                 .iov = @ptrCast(&iov),
@@ -160,7 +161,7 @@ pub const Connection = struct {
                 .controllen = cmsg_buf.len,
                 .flags = 0,
             };
-            const rc = system.recvmsg(fd, &msg, 0);
+            const rc = linux.recvmsg(fd, &msg, 0);
             switch (std.os.linux.errno(rc)) {
                 .SUCCESS => {},
                 .INTR => continue,
@@ -175,8 +176,8 @@ pub const Connection = struct {
     }
 
     /// Pull any SCM_RIGHTS fds out of a recvmsg control buffer into the queue.
-    fn collectFds(self: *Connection, msg: *const std.posix.msghdr) void {
-        const Cmsghdr = std.posix.system.cmsghdr;
+    fn collectFds(self: *Connection, msg: *const std.os.linux.msghdr) void {
+        const Cmsghdr = std.os.linux.cmsghdr;
         const hdr_size = @sizeOf(Cmsghdr);
         if (msg.controllen < hdr_size) return;
         const cmsg: *const Cmsghdr = @ptrCast(@alignCast(msg.control.?));
@@ -562,7 +563,7 @@ test "cmsghdr SCM_RIGHTS layout for one fd" {
     // len = @sizeOf(cmsghdr) + @sizeOf(i32)
     // level = SOL.SOCKET = 1
     // type = SCM.RIGHTS = 1
-    const Cmsghdr = std.posix.system.cmsghdr;
+    const Cmsghdr = std.os.linux.cmsghdr;
     const hdr_size = @sizeOf(Cmsghdr);
     const fd_size = @sizeOf(i32);
     const expected_len = hdr_size + fd_size;

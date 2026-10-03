@@ -105,6 +105,8 @@ pub fn build(b: *std.Build) void {
     const wl_tests = b.addTest(.{ .root_module = root_module });
     test_step.dependOn(&b.addRunArtifact(wl_tests).step);
 
+    addModuleCompileChecks(b, test_step, target, optimize, root_module);
+
     const wayland_dep = b.dependency("wayland", .{});
     const gen_check = b.addRunArtifact(host_gen_exe);
     gen_check.addFileArg(wayland_dep.path("protocol/wayland.xml"));
@@ -189,6 +191,42 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = cm_test_mod })).step);
 
     addExampleAndTools(b, target, optimize, wayland_dep, host_gen_exe);
+}
+
+/// Compile every declaration of the `wayland` module under forced analysis.
+///
+/// `zig build test` only analyses what the in-tree tests reach, so a public
+/// function that no test calls can hold a type error that this repository never
+/// shows and every consumer does. test/module_compile.zig pulls all of them in.
+///
+/// Two variants, because the library calls raw Linux syscalls and
+/// `std.posix.system` becomes `std.c` when libc is linked, changing the return
+/// types the errno handling reads: once free of libc (how this repository builds)
+/// and once with libc linked (how most consumers build).
+fn addModuleCompileChecks(
+    b: *std.Build,
+    test_step: *std.Build.Step,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    root_module: *std.Build.Module,
+) void {
+    for ([_]bool{ false, true }) |with_libc| {
+        const wl_mod = if (with_libc) b.createModule(.{
+            .root_source_file = b.path("src/wayland.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }) else root_module;
+
+        const check_mod = b.createModule(.{
+            .root_source_file = b.path("test/module_compile.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = with_libc,
+        });
+        check_mod.addImport("wayland", wl_mod);
+        test_step.dependOn(&b.addRunArtifact(b.addTest(.{ .root_module = check_mod })).step);
+    }
 }
 
 /// Build the example server (uses the generated wayland.xml stubs for

@@ -18,7 +18,7 @@ count: usize = 0,
 /// than leaked (a conformant peer never overflows one message's fd set).
 pub fn push(self: *FdQueue, fd: i32) void {
     if (self.count >= self.fds.len) {
-        _ = std.posix.system.close(fd);
+        _ = std.os.linux.close(fd);
         return;
     }
     self.fds[self.count] = fd;
@@ -37,7 +37,7 @@ pub fn takeFd(self: *FdQueue) ?i32 {
 
 /// Close and drop every queued fd (teardown).
 pub fn closeAll(self: *FdQueue) void {
-    for (self.fds[0..self.count]) |fd| _ = std.posix.system.close(fd);
+    for (self.fds[0..self.count]) |fd| _ = std.os.linux.close(fd);
     self.count = 0;
 }
 

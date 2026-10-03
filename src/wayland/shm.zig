@@ -71,8 +71,7 @@ pub const ShmPool = struct {
 /// ancillary. `sock_fd` must be a connected Unix domain socket. Client-side
 /// helper (the server receives fds via its buffered Connection).
 pub fn sendFd(sock_fd: posix.fd_t, wire_buf: []const u8, fd: posix.fd_t) !void {
-    const system = std.posix.system;
-    const Cmsghdr = system.cmsghdr;
+    const Cmsghdr = linux.cmsghdr;
 
     const hdr_size = @sizeOf(Cmsghdr);
     const fd_size = @sizeOf(posix.fd_t);
@@ -91,7 +90,7 @@ pub fn sendFd(sock_fd: posix.fd_t, wire_buf: []const u8, fd: posix.fd_t) !void {
         .len = wire_buf.len,
     };
 
-    const msg = std.posix.msghdr_const{
+    const msg = linux.msghdr_const{
         .name = null,
         .namelen = 0,
         .iov = @ptrCast(&iov),
@@ -101,7 +100,7 @@ pub fn sendFd(sock_fd: posix.fd_t, wire_buf: []const u8, fd: posix.fd_t) !void {
         .flags = 0,
     };
 
-    const rc = system.sendmsg(sock_fd, &msg, 0);
+    const rc = linux.sendmsg(sock_fd, &msg, 0);
     if (std.os.linux.errno(rc) != .SUCCESS) return error.SendFailed;
 }
 
