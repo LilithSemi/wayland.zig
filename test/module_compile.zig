@@ -15,8 +15,8 @@ const wayland = @import("wayland");
 
 fn refDeep(comptime T: type) void {
     std.testing.refAllDecls(T);
-    inline for (@typeInfo(T).@"struct".decls) |decl| {
-        const field = @field(T, decl.name);
+    inline for (@typeInfo(T).@"struct".decl_names) |decl_name| {
+        const field = @field(T, decl_name);
         if (@TypeOf(field) == type and @typeInfo(field) == .@"struct") {
             std.testing.refAllDecls(field);
         }
@@ -25,8 +25,8 @@ fn refDeep(comptime T: type) void {
 
 test "every wayland declaration compiles" {
     refDeep(wayland);
-    inline for (@typeInfo(wayland).@"struct".decls) |decl| {
-        const namespace = @field(wayland, decl.name);
+    inline for (@typeInfo(wayland).@"struct".decl_names) |decl_name| {
+        const namespace = @field(wayland, decl_name);
         if (@TypeOf(namespace) == type and @typeInfo(namespace) == .@"struct") {
             refDeep(namespace);
         }

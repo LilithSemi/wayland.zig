@@ -251,12 +251,12 @@ pub const Display = struct {
     /// Like addSocket but with an explicit runtime directory (used by tests).
     pub fn addSocketInDir(self: *Display, dir: []const u8, name: []const u8) DisplayError!void {
         var path_buf: [108]u8 = undefined;
-        const path = std.fmt.bufPrint(&path_buf, "{s}/{s}", .{ dir, name }) catch return error.NameTooLong;
+        const path = std.mem.printSentinel(&path_buf, "{s}/{s}", .{ dir, name }, 0) catch return error.NameTooLong;
         if (path.len >= 108) return error.NameTooLong;
 
         // Lockfile: <path>.lock, flock LOCK_EX|LOCK_NB.
         var lock_buf: [114]u8 = undefined;
-        const lock_path = std.fmt.bufPrintZ(&lock_buf, "{s}.lock", .{path}) catch return error.NameTooLong;
+        const lock_path = std.mem.printSentinel(&lock_buf, "{s}.lock", .{path}, 0) catch return error.NameTooLong;
         const lock_fd = openLock(lock_path) catch return error.LockFailed;
         errdefer _ = linux.close(lock_fd);
         if (linux.flock(lock_fd, LOCK_EX | LOCK_NB) != 0) {
@@ -439,6 +439,6 @@ test "Display: addSocketAuto binds in a temp runtime dir" {
 
     // The socket file exists at <dir>/<name> (F_OK = mode 0).
     var full_buf: [300]u8 = undefined;
-    const full = try std.fmt.bufPrintZ(&full_buf, "{s}/{s}", .{ dir, name });
+    const full = try std.mem.printSentinel(&full_buf, "{s}/{s}", .{ dir, name }, 0);
     try testing.expect(std.os.linux.errno(linux.access(full.ptr, 0)) == .SUCCESS);
 }

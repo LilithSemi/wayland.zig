@@ -56,7 +56,10 @@
       versionTemplate = "1.1pre-<lastModifiedDate>-<rev>";
 
       overlays.default = final: prev: {
-        wayland-zig = final.callPackage ./pkgs/wayland-zig { flakever = flakeverConfig; };
+        wayland-zig = final.callPackage ./pkgs/wayland-zig {
+          flakever = flakeverConfig;
+          zig = final.zig_0_17;
+        };
       };
 
       devShells = forAllSystems (
